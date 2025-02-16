@@ -1,0 +1,47 @@
+version: '3'
+
+services:
+  my-python-code:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+    volumes:
+      - type: bind
+        source: ./share-folder
+        target: /app/share-folder
+        bind:
+          propagation: shared
+    restart: always 
+    deploy:
+      resources:
+        limits:
+          cpus: "4"   # Limit to 1 CPU core
+          memory: "2G"  # Limit memory to 512MB
+        reservations:
+          cpus: "2"   # Reserve at least 0.5 CPU core
+          memory: "512M"  # Reserve at least 256MB memory
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - 11434:11434
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          cpus: "6"   # Limit to 1 CPU core
+          memory: "10G"  # Limit memory to 512MB
+        reservations:
+          cpus: "4"   # Reserve at least 0.5 CPU core
+          memory: "6G"  # Reserve at least 256MB memory
+
+volumes:
+  ollama_data:
+  
