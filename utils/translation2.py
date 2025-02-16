@@ -7,27 +7,27 @@ from ollama import pull
 from google import genai
 
 
-my_ollama = Client(
-  host='http://ollama:11434',
-  headers={'x-some-header': 'some-value'}
-)
+# my_ollama = Client(
+#   host='http://ollama:11434',
+#   headers={'x-some-header': 'some-value'}
+# )
 
 ### Pull the model
-my_ollama.pull('gemma2')
+# my_ollama.pull('gemma2')
 
-def translate_text(text, model="gemma2"):
-    print(f'text is {text}')
-    """Translates English text to Persian"""
-    prompt = (
-        f"Translate the following text into Persian. "
-        f"Provide only the translated text without any explanations, breakdowns, or additional context.\n\n"
-        f"Text: \"{text}\"\nTranslation:"
-    )
-    response = my_ollama.chat(model=model, messages=[
-        {'role': 'user', 'content': prompt
-    }
-    ])
-    return response['message']['content']
+# def translate_text(text, model="gemma2"):
+#     print(f'text is {text}')
+#     """Translates English text to Persian"""
+#     prompt = (
+#         f"Translate the following text into Persian. "
+#         f"Provide only the translated text without any explanations, breakdowns, or additional context.\n\n"
+#         f"Text: \"{text}\"\nTranslation:"
+#     )
+#     response = my_ollama.chat(model=model, messages=[
+#         {'role': 'user', 'content': prompt
+#     }
+#     ])
+#     return response['message']['content']
 
 
 ### translate by Gemeni API
@@ -88,9 +88,9 @@ def translate_srt(input_srt, output_srt, model="gemma2"):
         text = '\n'.join(lines[2:])  # Subtitle text
         print(text)
 
-        translated_text = translate_text(text, model)
-        print(translated_text)
-        translated_srt.append(f"{subtitle_index}\n{timestamp}\n{translated_text}\n")
+        # translated_text = translate_text(text, model)
+        # print(translated_text)
+        # translated_srt.append(f"{subtitle_index}\n{timestamp}\n{translated_text}\n")
 
     with open(output_srt, 'w', encoding='utf-8') as file:
         file.write("\n\n".join(translated_srt))

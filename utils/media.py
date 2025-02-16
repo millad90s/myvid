@@ -76,30 +76,58 @@ def save_segments_to_srt(segments, output_file="output.srt"):
 
 
 
+# def convert_srt_to_ass(srt_file, ass_file="styled_farsi_subtitles.ass"):
+#     """
+#     Convert an SRT file to an ASS file and apply Persian styling (black text, white background).
+#     """
+#     subs = pysubs2.load(srt_file, encoding="utf-8")
+
+#     # Define Persian-friendly font style
+#     subs.styles["FarsiStyle"] = pysubs2.Style(
+#         fontname="B Nazanin",  # Use a Persian font (install it first)
+#         fontsize=36,           # Adjust font size
+#         primarycolor=pysubs2.Color(0, 0, 0, 255),  # Black text
+#         backcolor=pysubs2.Color(255, 255, 255, 255),  # White background
+#         alignment=pysubs2.Alignment.BOTTOM_CENTER,  # Centered subtitles
+#         bold=True
+#     )
+#     subs.info["ScaledBorderAndShadow"] = "no"
+
+
+#     # Apply the custom style to all subtitle lines
+#     for line in subs:
+#         line.style = "FarsiStyle"
+
+#     # Save as ASS
+#     subs.save(ass_file)
+#     print(f"✅ Converted {srt_file} to {ass_file} with Persian styling.")
+#     return subs
+
 def convert_srt_to_ass(srt_file, ass_file="styled_farsi_subtitles.ass"):
     """
     Convert an SRT file to an ASS file and apply Persian styling (black text, white background).
     """
     subs = pysubs2.load(srt_file, encoding="utf-8")
 
-    # Define Persian-friendly font style
-    subs.styles["FarsiStyle"] = pysubs2.Style(
-        fontname="B Nazanin",  # Use a Persian font (install it first)
-        fontsize=36,           # Adjust font size
-        primarycolor=pysubs2.Color(0, 0, 0, 255),  # Black text
-        backcolor=pysubs2.Color(255, 255, 255, 255),  # White background
-        alignment=pysubs2.Alignment.BOTTOM_CENTER,  # Centered subtitles
-        bold=True
-    )
+    # Modify default subtitle style for Persian
+    subs.styles["Default"].fontname = "B Mitra"  # Use Persian font
+    subs.styles["Default"].fontsize = 18  # Increase size for readability
+    subs.styles["Default"].primarycolor = pysubs2.Color(0,0,0)  # White text
+    subs.styles["Default"].backcolor = pysubs2.Color(255,255,255)  # black color
+    
+    subs.styles["Default"].outline = 0  # No outline
+    subs.styles["Default"].shadow = 0  # No shadow
+    subs.styles["Default"].borderstyle = 3  # 3 = Boxed background
+    subs.styles["Default"].marginl = 20  # Left margin
+    subs.styles["Default"].marginr = 20  # Right margin
+    subs.styles["Default"].marginv = 20  # Bottom margin
+    
+    subs.styles["Default"].bold = True
+    subs.info["ScaledBorderAndShadow"] = "no"
 
-    # Apply the custom style to all subtitle lines
-    for line in subs:
-        line.style = "FarsiStyle"
-
-    # Save as ASS
+    # Save to ASS format
     subs.save(ass_file)
     print(f"✅ Converted {srt_file} to {ass_file} with Persian styling.")
-    return subs
 
 ### bind str to video 
 def embed_subtitles_ffmpeg(video_file, output_file, subtitle_file="styled_farsi_subtitles.ass"):
@@ -111,12 +139,14 @@ def embed_subtitles_ffmpeg(video_file, output_file, subtitle_file="styled_farsi_
         subtitle_file (str): Path to the .ass subtitle file.
         output_file (str): Path to the output video file.
     """
+    ASS_file = "test2.ass"
+    convert_srt_to_ass(subtitle_file,ASS_file)
     try:
         # Build and run the ffmpeg command
         (
             ffmpeg
             .input(video_file)
-            .output(output_file, vf=f"subtitles={subtitle_file}", vcodec="libx264", acodec="aac", crf=23, preset="medium")
+            .output(output_file, vf=f"subtitles={ASS_file}", vcodec="libx264", acodec="aac", crf=23, preset="medium")
             .run(overwrite_output=True)
         )
         print(f"Subtitled video saved as: {output_file}")

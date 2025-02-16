@@ -25,7 +25,7 @@ services:
           memory: "2G"  # Limit memory to 512MB
         reservations:
           cpus: "2"   # Reserve at least 0.5 CPU core
-          memory: "512M"  # Reserve at least 256MB memory
+          memory: "1G"  # Reserve at least 256MB memory
 
   ollama:
     image: ollama/ollama:latest

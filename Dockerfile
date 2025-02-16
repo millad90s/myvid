@@ -10,6 +10,7 @@ RUN apt update && apt install -y \
     curl vim wget curl \
     && rm -rf /var/lib/apt/lists/*
 
+COPY files/fonts/* /usr/share/fonts/truetype/
 # Set the working directory
 WORKDIR /app
 
