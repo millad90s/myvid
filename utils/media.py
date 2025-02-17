@@ -5,6 +5,7 @@ from datetime import timedelta
 import yt_dlp
 import gc
 import pysubs2
+import logging
 
 
 input_video = "output.mp4"
@@ -103,34 +104,43 @@ def save_segments_to_srt(segments, output_file="output.srt"):
 #     print(f"✅ Converted {srt_file} to {ass_file} with Persian styling.")
 #     return subs
 
-def convert_srt_to_ass(srt_file, ass_file="styled_farsi_subtitles.ass"):
+def convert_srt_to_ass(srt_file, ass_file="styled_farsi_subtitles.ass", subtitle_setting={}):
     """
     Convert an SRT file to an ASS file and apply Persian styling (black text, white background).
     """
     subs = pysubs2.load(srt_file, encoding="utf-8")
 
+    print("subtitle_setting is:  ")
+    logging.info(subtitle_setting)
     # Modify default subtitle style for Persian
-    subs.styles["Default"].fontname = "B Mitra"  # Use Persian font
-    subs.styles["Default"].fontsize = 18  # Increase size for readability
+    subs.styles["Default"].fontname = "B Nazanin"
     subs.styles["Default"].primarycolor = pysubs2.Color(0,0,0)  # White text
     subs.styles["Default"].backcolor = pysubs2.Color(255,255,255)  # black color
+    subs.styles["Default"].outlinecolor = pysubs2.Color(255,255,255)  # black color
     
-    subs.styles["Default"].outline = 0  # No outline
+    # Set font size with explicit default handling
+    # subs.styles["Default"].fontsize = 14  # Increase size for readability
+    subs.styles["Default"].fontsize = subtitle_setting["fontsize"] if "fontsize" in subtitle_setting else 12  # Default: 16
+    
+    
+    subs.styles["Default"].outline = 4  # No outline
     subs.styles["Default"].shadow = 0  # No shadow
-    subs.styles["Default"].borderstyle = 3  # 3 = Boxed background
+    subs.styles["Default"].borderstyle = 4  # 3 = Boxed background
     subs.styles["Default"].marginl = 20  # Left margin
     subs.styles["Default"].marginr = 20  # Right margin
-    subs.styles["Default"].marginv = 20  # Bottom margin
+    # subs.styles["Default"].marginv = 20  # Bottom margin
+    subs.styles["Default"].marginv =  subtitle_setting["marginv"] if "marginv" in subtitle_setting else 20  # Default: 20
     
     subs.styles["Default"].bold = True
     subs.info["ScaledBorderAndShadow"] = "no"
 
     # Save to ASS format
     subs.save(ass_file)
+
     print(f"✅ Converted {srt_file} to {ass_file} with Persian styling.")
 
 ### bind str to video 
-def embed_subtitles_ffmpeg(video_file, output_file, subtitle_file="styled_farsi_subtitles.ass"):
+def embed_subtitles_ffmpeg(video_file, output_file, subtitle_file="styled_farsi_subtitles.ass", subtitle_setting={}):
     """
     Embeds an .ass subtitle file into an .mp4 video using the ffmpeg library.
 
@@ -140,7 +150,7 @@ def embed_subtitles_ffmpeg(video_file, output_file, subtitle_file="styled_farsi_
         output_file (str): Path to the output video file.
     """
     ASS_file = "test2.ass"
-    convert_srt_to_ass(subtitle_file,ASS_file)
+    convert_srt_to_ass(subtitle_file,ASS_file, subtitle_setting)
     try:
         # Build and run the ffmpeg command
         (

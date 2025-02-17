@@ -52,6 +52,8 @@ DOWNLOADS_DIR = "downloads"  # Directory to save files
 os.makedirs(DOWNLOADS_DIR, exist_ok=True)  # Ensure the directory exists
 subtitle_path = ""
 video_path = ""
+user_subtitle_settings = {}
+
 
 def generate_filename(prefix="file", extension="txt"):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -111,8 +113,8 @@ async def get_insta_reels(update: Update, context: CallbackContext):
             
             translation.translate_srt(origin_srt_path, ollama_srt_path)
         
-            document2 = open(ollama_srt_path, 'rb')
-            await context.bot.send_document(chat_id=update.effective_chat.id, document=document2)
+            # document2 = open(ollama_srt_path, 'rb')
+            # await context.bot.send_document(chat_id=update.effective_chat.id, document=document2)
         
 
 
@@ -130,11 +132,15 @@ async def whoami(update: Update, context: CallbackContext):
     print(admins)
 async def receive_video(update: Update, context: CallbackContext):
     """Handles receiving and downloading a video file from Telegram."""
-    
+
+    logging.info(context.user_data)
+    logging.info(context.user_data)
     if context.user_data.get('waiting_for_video'):
         video = update.message.video or update.message.document  # Handle both video & document
         if video:
             file_id = video.file_id
+            print("((((((((((()))))))))))")
+            print(file_id)
             file_name = f"{file_id}.mp4"  # Assign a unique filename
             video_path = os.path.join(DOWNLOADS_DIR, file_name)
 
@@ -162,6 +168,13 @@ async def receive_video(update: Update, context: CallbackContext):
 
 
 
+async def set_subtitle(update: Update, context: CallbackContext):
+  # Ensure subtitle_setting dictionary exists
+    if "subtitle_setting" not in context.user_data:
+        context.user_data["subtitle_setting"] = {}  # Initialize empty dictionary
+    
+    await context.bot.send_message(chat_id=update.effective_chat.id, 
+                                    text="Please enter FontSize ?")
 
 async def receive_srt(update: Update, context: CallbackContext):
     """Handle the received SRT subtitle file."""
@@ -213,9 +226,10 @@ async def bind_subtitle_to_video(update: Update, context: CallbackContext):
     async with asyncio.Lock():  # Prevent multiple users from running at the same time
         try:
             await context.bot.send_message(chat_id=update.effective_chat.id, text="⏳ Processing video...")
-
+            
+            logging.info(context.user_data.get('subtitle_setting'))
             # Run your existing function asynchronously
-            await asyncio.to_thread(media.embed_subtitles_ffmpeg, video_path, output_video, subtitle_path)
+            await asyncio.to_thread(media.embed_subtitles_ffmpeg, video_path, output_video, subtitle_path, context.user_data.get('subtitle_setting'))
 
             # Send the processed video back to the user
             await context.bot.send_video(chat_id=update.effective_chat.id, video=open(output_video, 'rb'))
@@ -243,7 +257,70 @@ async def add_sub_command(update: Update, context: CallbackContext):
     await context.bot.send_message(chat_id=update.effective_chat.id, text="🎬 Please upload the video file first.")
     await context.bot.send_message(chat_id=update.effective_chat.id, text="📝 Then, upload the subtitle (.srt) file.")
 
+    # Ensure subtitle_setting exists in user_data
+    if "subtitle_setting" not in context.user_data:
+        context.user_data["subtitle_setting"] = {}  # Initialize empty dictionary
 
+
+
+### poll subtitle position 
+async def send_subtitle_position_poll(update: Update, context: CallbackContext):
+    """
+    Sends a poll to ask the user for their preferred subtitle position.
+    """
+    # Ensure subtitle_setting dictionary exists
+    if "subtitle_setting" not in context.user_data:
+        context.user_data["subtitle_setting"] = {}  # Initialize empty dictionary
+        
+    question = "Where do you want the subtitles to appear?"
+    options = ["Bottom(20)", "Mid-Bottom(40)", "Mid-Up(60)", "Up(80)"]
+    
+    # Send the poll
+    message = await context.bot.send_poll(
+        chat_id=update.effective_chat.id,
+        question=question,
+        options=options[::-1],
+        is_anonymous=False
+    )
+    
+    # # Store poll message ID and chat ID to track answers
+    # context.chat_data["poll_id"] = message.poll.id
+    # context.chat_data["poll_message_id"] = message.message_id
+    # context.chat_data["chat_id"] = update.effective_chat.id
+
+### handle subtitle position poll 
+async def handle_poll_answer(update: Update, context: CallbackContext):
+    """
+    Handles the user's answer from the poll and updates the subtitle position setting.
+    """
+    poll_answer = update.poll_answer
+    user_id = poll_answer.user.id
+    selected_option = poll_answer.option_ids[0]  # Get the index of the selected option
+    
+
+    # Map poll options to subtitle alignment codes
+    position_mapping = {
+        0: "220",         # At the top
+        1: "160",      # Slightly below top
+        2: "100",  # Slightly above bottom
+        3: "30",      # Default bottom center
+    }
+    
+    selected_position = position_mapping.get(selected_option, "30")  # Default to "bottom"
+
+    context.user_data["subtitle_setting"]["marginv"] = selected_position
+    print(context.user_data)
+
+
+    # Store the user's choice
+    context.user_data['subtitle_position'] = selected_option
+
+    # Send confirmation message
+    await context.bot.send_message(
+        chat_id=user_id,
+        text=f"✅ Subtitle position set to: {selected_position} above bottom!"
+    )
+    
 def main():
     load_dotenv()
     # Read logging settings from environment variables
@@ -251,7 +328,7 @@ def main():
     log_format = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     
-  # Set up logger
+    # Set up logger
     logging.basicConfig(
         format=log_format,
         level=getattr(logging, log_level, logging.INFO)  # Convert string level to logging constant
@@ -264,8 +341,15 @@ def main():
     application.add_handler(CommandHandler("reels", get_insta_reels))
     application.add_handler(CommandHandler("whoami", whoami))
     application.add_handler(CommandHandler("addsub", add_sub_command))
-    application.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, receive_video))
+    application.add_handler(CommandHandler("subset", set_subtitle))
+    application.add_handler(CommandHandler("setposition", send_subtitle_position_poll))
+    application.add_handler(MessageHandler(
+        (filters.ChatType.GROUPS | filters.ChatType.PRIVATE) & (filters.VIDEO | filters.Document.VIDEO),
+        receive_video
+    ))
     application.add_handler(MessageHandler(filters.Document.ALL, receive_srt))
+
+    application.add_handler(PollAnswerHandler(handle_poll_answer))
 
     
     # Start the bot
