@@ -73,6 +73,13 @@ async def help_handler(update: Update, context: CallbackContext):
 async def start_handler(update: Update, context: CallbackContext):
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Welcome to the Telegram bot!")
 
+# Function to remove file if it exists
+def remove_file_if_exists(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        print(f"Removed: {file_path}")
+    else:
+        print(f"File not found: {file_path}")
 async def get_insta_reels(update: Update, context: CallbackContext):
     
     ### check user id , if it is admin then send reels
@@ -109,17 +116,25 @@ async def get_insta_reels(update: Update, context: CallbackContext):
             API_KEY = os.getenv('GEM_API_KEY')
             translation.gemeni_translator(API_KEY, origin_srt_path, gemeni_srt_path)
             document3 = open(gemeni_srt_path)
+            # Read the contents
+            content = document3.read()
+            document3.close()
             await context.bot.send_document(chat_id=update.effective_chat.id, document=document3 )
             
-            translation.translate_srt(origin_srt_path, ollama_srt_path)
+            # Save it as a .txt file
+            txt_path = gemeni_srt_path.replace(".srt", ".txt")  # Change file extension
+            with open(txt_path, "w", encoding="utf-8") as txt_file:
+                txt_file.write(content)
+            await context.bot.send_document(chat_id=update.effective_chat.id, document=txt_path )
+            # translation.translate_srt(origin_srt_path, ollama_srt_path)
         
-            # document2 = open(ollama_srt_path, 'rb')
-            # await context.bot.send_document(chat_id=update.effective_chat.id, document=document2)
-        
-
-
             ### delete video from system 
-            os.remove("share-folder/output-"+file_name+".mp4")
+            remove_file_if_exists(video_path)
+            remove_file_if_exists(origin_srt_path)
+            remove_file_if_exists(ollama_srt_path)
+            remove_file_if_exists(gemeni_srt_path)
+            remove_file_if_exists(txt_path)
+            
         except:
             logging.debug("errorrr")
         # finally:
