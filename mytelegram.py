@@ -7,6 +7,7 @@ import time
 import random
 from utils import translation
 import os
+import shutil
 import logging
 import asyncio
 from telegram.ext import (
@@ -103,6 +104,8 @@ async def get_insta_reels(update: Update, context: CallbackContext):
             origin_srt_path = "share-folder/transcription-"+file_name+".srt"
             ollama_srt_path = "share-folder/translated-"+file_name+".srt"
             gemeni_srt_path = "share-folder/Gemeni_translated-"+file_name+".srt"
+            gemeni_txt_path = "share-folder/Gemeni_translated-"+file_name+".txt"
+            
             
             await context.bot.send_video(chat_id=update.effective_chat.id, video=video_path)
             extracted_audio = media.extract_audio(video_path)
@@ -117,15 +120,15 @@ async def get_insta_reels(update: Update, context: CallbackContext):
             translation.gemeni_translator(API_KEY, origin_srt_path, gemeni_srt_path)
             document3 = open(gemeni_srt_path)
             # Read the contents
-            content = document3.read()
-            document3.close()
+            # content = document3.read()
             await context.bot.send_document(chat_id=update.effective_chat.id, document=document3 )
+            # document3.close()
             
-            # Save it as a .txt file
-            txt_path = gemeni_srt_path.replace(".srt", ".txt")  # Change file extension
-            with open(txt_path, "w", encoding="utf-8") as txt_file:
-                txt_file.write(content)
-            await context.bot.send_document(chat_id=update.effective_chat.id, document=txt_path )
+            # copy strt to txt file 
+            shutil.copyfile(gemeni_srt_path, gemeni_txt_path)
+            # with open(txt_path, "w", encoding="utf-8") as txt_file:
+            #     txt_file.write(content.decode("utf-8"))
+            await context.bot.send_document(chat_id=update.effective_chat.id, document=gemeni_txt_path )
             # translation.translate_srt(origin_srt_path, ollama_srt_path)
         
             ### delete video from system 
@@ -133,7 +136,7 @@ async def get_insta_reels(update: Update, context: CallbackContext):
             remove_file_if_exists(origin_srt_path)
             remove_file_if_exists(ollama_srt_path)
             remove_file_if_exists(gemeni_srt_path)
-            remove_file_if_exists(txt_path)
+            remove_file_if_exists(gemeni_txt_path)
             
         except:
             logging.debug("errorrr")

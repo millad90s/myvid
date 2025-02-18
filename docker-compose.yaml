@@ -21,7 +21,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "4"   # Limit to 1 CPU core
+          cpus: "3"   # Limit to 1 CPU core
           memory: "2G"  # Limit memory to 512MB
         reservations:
           cpus: "2"   # Reserve at least 0.5 CPU core
