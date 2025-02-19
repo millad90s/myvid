@@ -1,5 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Poll
 from dotenv import load_dotenv
+from collections import deque
 from google import genai
 from utils import media
 import threading
@@ -33,6 +34,7 @@ from functools import wraps
 
 # Lock to prevent multiple downloads
 download_lock = threading.Lock()
+queue = deque()
 
 keyboards = {
     'menu': [
@@ -74,74 +76,72 @@ async def help_handler(update: Update, context: CallbackContext):
 async def start_handler(update: Update, context: CallbackContext):
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Welcome to the Telegram bot!")
 
-# Function to remove file if it exists
-def remove_file_if_exists(file_path):
-    if os.path.exists(file_path):
-        os.remove(file_path)
-        print(f"Removed: {file_path}")
-    else:
-        print(f"File not found: {file_path}")
+
 async def get_insta_reels(update: Update, context: CallbackContext):
     
     ### check user id , if it is admin then send reels
     admins = os.getenv('ADMIN_ID').split(",")
     logging.debug(f'admins are {admins}')
     logging.debug(f'user id is {update.effective_chat.id}')
-    
-    # if str(update.effective_chat.id) not in admins:
-    #     await context.bot.send_message(chat_id=update.effective_chat.id, text="you are not allowed 👮 ")
-        # return
+
     url = update.message.text.split(" ")[-1]
-    # get user name from message
-    with download_lock:
-        try: 
-            file_name = generate_filename()
-            
-            await context.bot.send_message(chat_id=update.effective_chat.id, text="📺")
-            media.download_insta_reel(url,"share-folder", str(file_name))
-            ### send video to user
-            video_path = "share-folder/output-"+file_name+".mp4"
-            origin_srt_path = "share-folder/transcription-"+file_name+".srt"
-            ollama_srt_path = "share-folder/translated-"+file_name+".srt"
-            gemeni_srt_path = "share-folder/Gemeni_translated-"+file_name+".srt"
-            gemeni_txt_path = "share-folder/Gemeni_translated-"+file_name+".txt"
-            
-            
-            await context.bot.send_video(chat_id=update.effective_chat.id, video=video_path)
-            extracted_audio = media.extract_audio(video_path)
-            language, segments = media.transcribe(audio=extracted_audio)
-            
-            media.save_segments_to_srt(segments, origin_srt_path)
-            document1 = open(origin_srt_path, 'rb')
-            await context.bot.send_document(chat_id=update.effective_chat.id, document=document1)
-            
-            ### lets test gemeni :) 
-            API_KEY = os.getenv('GEM_API_KEY')
-            translation.gemeni_translator(API_KEY, origin_srt_path, gemeni_srt_path)
-            document3 = open(gemeni_srt_path)
-            # Read the contents
-            # content = document3.read()
-            await context.bot.send_document(chat_id=update.effective_chat.id, document=document3 )
-            # document3.close()
-            
-            # copy strt to txt file 
-            shutil.copyfile(gemeni_srt_path, gemeni_txt_path)
-            # with open(txt_path, "w", encoding="utf-8") as txt_file:
-            #     txt_file.write(content.decode("utf-8"))
-            await context.bot.send_document(chat_id=update.effective_chat.id, document=gemeni_txt_path )
-            # translation.translate_srt(origin_srt_path, ollama_srt_path)
+
+    ### return if url is not start with instagram reels 
+    if not url.startswith("https://www.instagram.com/reels/"):
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="🙅‍♂️ url is not instagram reels")
+        return
+    try:
+        queue.append(f'{ update.effective_chat.id},{ update.message.text.split(" ")[0]},{ update.message.text.split(" ")[-1]}')
+        queue_size = len(queue)
+        print(f"Queue size: {queue_size}")
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"# Jobs in the queue: {queue_size}")
+        # file_name = generate_filename()
         
-            ### delete video from system 
-            remove_file_if_exists(video_path)
-            remove_file_if_exists(origin_srt_path)
-            remove_file_if_exists(ollama_srt_path)
-            remove_file_if_exists(gemeni_srt_path)
-            remove_file_if_exists(gemeni_txt_path)
-            
-        except:
-            logging.debug("errorrr")
-        # finally:
-        #     os.remove("temprarily files")
+        # await context.bot.send_message(chat_id=update.effective_chat.id, text="📺")
+        # media.download_insta_reel(url,"share-folder", str(file_name))
+        # ### send video to user
+        # video_path = "share-folder/output-"+file_name+".mp4"
+        # origin_srt_path = "share-folder/transcription-"+file_name+".srt"
+        # ollama_srt_path = "share-folder/translated-"+file_name+".srt"
+        # gemeni_srt_path = "share-folder/Gemeni_translated-"+file_name+".srt"
+        # gemeni_txt_path = "share-folder/Gemeni_translated-"+file_name+".txt"
+        
+        
+        # await context.bot.send_video(chat_id=update.effective_chat.id, video=video_path)
+        # extracted_audio = media.extract_audio(video_path)
+        # language, segments = media.transcribe(audio=extracted_audio)
+        
+        # media.save_segments_to_srt(segments, origin_srt_path)
+        # document1 = open(origin_srt_path, 'rb')
+        # await context.bot.send_document(chat_id=update.effective_chat.id, document=document1)
+        
+        # ### lets test gemeni :) 
+        # API_KEY = os.getenv('GEM_API_KEY')
+        # translation.gemeni_translator(API_KEY, origin_srt_path, gemeni_srt_path)
+        # document3 = open(gemeni_srt_path)
+        # # Read the contents
+        # # content = document3.read()
+        # await context.bot.send_document(chat_id=update.effective_chat.id, document=document3 )
+        # # document3.close()
+        
+        # # copy strt to txt file 
+        # shutil.copyfile(gemeni_srt_path, gemeni_txt_path)
+        # # with open(txt_path, "w", encoding="utf-8") as txt_file:
+        # #     txt_file.write(content.decode("utf-8"))
+        # await context.bot.send_document(chat_id=update.effective_chat.id, document=gemeni_txt_path )
+        # # translation.translate_srt(origin_srt_path, ollama_srt_path)
+    
+        # ### delete video from system 
+        # remove_file_if_exists(video_path)
+        # remove_file_if_exists(origin_srt_path)
+        # remove_file_if_exists(ollama_srt_path)
+        # remove_file_if_exists(gemeni_srt_path)
+        # remove_file_if_exists(gemeni_txt_path)
+        
+    except Exception as e:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"❌ Error processing video: {str(e)}")
+    # finally:
+    #     os.remove("temprarily files")
     
 async def whoami(update: Update, context: CallbackContext):
     admins = os.getenv('ADMIN_ID')
@@ -291,8 +291,8 @@ async def send_subtitle_position_poll(update: Update, context: CallbackContext):
         context.user_data["subtitle_setting"] = {}  # Initialize empty dictionary
         
     question = "Where do you want the subtitles to appear?"
-    options = ["Bottom(20)", "Mid-Bottom(40)", "Mid-Up(60)", "Up(80)"]
-    
+    options = ["1/7(30)", "2/7(55)", "3/7(85)", "4/7(120)", "5/7(155)", "6/7(190)", "7/7(230)"]
+
     # Send the poll
     message = await context.bot.send_poll(
         chat_id=update.effective_chat.id,
@@ -306,6 +306,15 @@ async def send_subtitle_position_poll(update: Update, context: CallbackContext):
     # context.chat_data["poll_message_id"] = message.message_id
     # context.chat_data["chat_id"] = update.effective_chat.id
 
+### show user's subtitle position
+async def show_subtitle_position(update: Update, context: CallbackContext):
+    ### check if subtitle position is set
+    if "subtitle_setting" not in context.user_data:
+        context.user_data["subtitle_setting"] = {}  # Initialize empty dictionary
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Your subtitle position is: bottom')
+        return
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Your subtitle position is: {context.user_data["subtitle_setting"]["marginv"]}')
+    
 ### handle subtitle position poll 
 async def handle_poll_answer(update: Update, context: CallbackContext):
     """
@@ -318,10 +327,13 @@ async def handle_poll_answer(update: Update, context: CallbackContext):
 
     # Map poll options to subtitle alignment codes
     position_mapping = {
-        0: "220",         # At the top
-        1: "160",      # Slightly below top
-        2: "100",  # Slightly above bottom
-        3: "30",      # Default bottom center
+        0: "230",
+        1: "190",
+        2: "155",         # At the top
+        3: "120",         # At the top
+        4: "85",      # Slightly below top
+        5: "55",  # Slightly above bottom
+        6: "30",      # Default bottom center
     }
     
     selected_position = position_mapping.get(selected_option, "30")  # Default to "bottom"
@@ -338,8 +350,100 @@ async def handle_poll_answer(update: Update, context: CallbackContext):
         chat_id=user_id,
         text=f"✅ Subtitle position set to: {selected_position} above bottom!"
     )
+async def add_queue(update: Update, context: CallbackContext):
+    text = f'{update.effective_chat.id},{update.message.text.split(" ")[0]},{update.message.text.split(" ")[1]}'
+    logging.debug(text)
+    queue.append(text)
+    
+async def background_task(app: Application):
+    """یک تسک پس‌زمینه‌ای که هر ۱۰ ثانیه یک پیام ارسال می‌کند."""
+    while True:
+        # print("📢 پیام خودکار از سمت بات!")
+        await asyncio.sleep(10)  # هر ۱۰ ثانیه اجرا شود
+        # chat_id = 2140876637  # آیدی چت مورد نظر (تغییر دهید)
+        # await app.bot.send_message(chat_id, "📢 پیام خودکار از سمت بکگراند تسک!")
+    
+        #### bring /reels here 
+        # admins = os.getenv('ADMIN_ID').split(",")
+        # logging.debug(f'admins are {admins}')
+        # logging.debug(f'user id is {update.effective_chat.id}')
+        
+        # if str(update.effective_chat.id) not in admins:
+        #     await context.bot.send_message(chat_id=update.effective_chat.id, text="you are not allowed 👮 ")
+            # return
+            # get user name from message
+            # with download_lock:
+        try: 
+            if queue:
+                msg = queue.popleft()
+                chat_id = msg.split(",")[0]
+                command = msg.split(",")[1]
+                url = msg.split(",")[2]
+
+                await app.bot.send_message(chat_id, msg)
+                file_name = generate_filename()
+                
+                await app.bot.send_message(chat_id=chat_id, text="📺")
+                media.download_insta_reel(url,"share-folder", str(file_name))
+                ### send video to user
+                video_path = "share-folder/output-"+file_name+".mp4"
+                origin_srt_path = "share-folder/transcription-"+file_name+".srt"
+                ollama_srt_path = "share-folder/translated-"+file_name+".srt"
+                gemeni_srt_path = "share-folder/Gemeni_translated-"+file_name+".srt"
+                gemeni_txt_path = "share-folder/Gemeni_translated-"+file_name+".txt"
+                
+                
+                await app.bot.send_video(chat_id=chat_id, video=video_path)
+                extracted_audio = media.extract_audio(video_path)
+                language, segments = media.transcribe(audio=extracted_audio)
+                
+                media.save_segments_to_srt(segments, origin_srt_path)
+                document1 = open(origin_srt_path, 'rb')
+                await app.bot.send_document(chat_id=chat_id, document=document1)
+                
+                ### lets test gemeni :) 
+                API_KEY = os.getenv('GEM_API_KEY')
+                translation.gemeni_translator(API_KEY, origin_srt_path, gemeni_srt_path)
+                document3 = open(gemeni_srt_path)
+                # Read the contents
+                # content = document3.read()
+                await app.bot.send_document(chat_id=chat_id, document=document3 )
+                # document3.close()
+                
+                # copy strt to txt file 
+                shutil.copyfile(gemeni_srt_path, gemeni_txt_path)
+                # with open(txt_path, "w", encoding="utf-8") as txt_file:
+                #     txt_file.write(content.decode("utf-8"))
+                await app.bot.send_document(chat_id=chat_id, document=gemeni_txt_path )
+                # translation.translate_srt(origin_srt_path, ollama_srt_path)
+            
+                ### delete video from system 
+                media.remove_file_if_exists(video_path)
+                media.remove_file_if_exists(origin_srt_path)
+                media.remove_file_if_exists(ollama_srt_path)
+                media.remove_file_if_exists(gemeni_srt_path)
+                media.remove_file_if_exists(gemeni_txt_path)
+        except Exception as e:
+            await app.bot.send_message(chat_id=chat_id, text=f"❌ Error processing video: {str(e)}")
+            media.remove_file_if_exists(video_path)
+            media.remove_file_if_exists(origin_srt_path)
+            media.remove_file_if_exists(ollama_srt_path)
+            media.remove_file_if_exists(gemeni_srt_path)
+            media.remove_file_if_exists(gemeni_txt_path)
+            logging.error(f"Error processing video: {str(e)}")
+        finally:
+            queue_size = len(queue)
+            print(f"Queue size: {queue_size}")
+            
+async def on_startup(app: Application):
+    """این تابع هنگام اجرای بات اجرا می‌شود."""
+    asyncio.create_task(background_task(app))  # اجرای تسک پس‌زمینه
+async def show_queue(update: Update, context: CallbackContext):
+    queue_size = len(queue)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Queue size: {queue_size}")
     
 def main():
+    
     load_dotenv()
     # Read logging settings from environment variables
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()  # Default to INFO
@@ -351,7 +455,7 @@ def main():
         format=log_format,
         level=getattr(logging, log_level, logging.INFO)  # Convert string level to logging constant
     )
-    application = Application.builder().token(os.getenv('TELEGRAM_API_KEY')).build()  
+    application = Application.builder().token('7304092080:AAE8PY2jfdujdIlV7J3a2CBfJMcgHC_XKUA').post_init(on_startup).build()
     logging.debug("Starting bot...")
 
     application.add_handler(CommandHandler("start", start_handler))
@@ -360,7 +464,10 @@ def main():
     application.add_handler(CommandHandler("whoami", whoami))
     application.add_handler(CommandHandler("addsub", add_sub_command))
     application.add_handler(CommandHandler("subset", set_subtitle))
+    application.add_handler(CommandHandler("add_q", add_queue))
     application.add_handler(CommandHandler("setposition", send_subtitle_position_poll))
+    application.add_handler(CommandHandler("showposition", show_subtitle_position))
+    application.add_handler(CommandHandler("show_q", show_queue))
     application.add_handler(MessageHandler(
         (filters.ChatType.GROUPS | filters.ChatType.PRIVATE) & (filters.VIDEO | filters.Document.VIDEO),
         receive_video

@@ -6,6 +6,7 @@ import yt_dlp
 import gc
 import pysubs2
 import logging
+import os
 
 
 input_video = "output.mp4"
@@ -163,7 +164,14 @@ def embed_subtitles_ffmpeg(video_file, output_file, subtitle_file="styled_farsi_
     except ffmpeg.Error as e:
         print("Error during processing:", e.stderr.decode())
 
-
+# Function to remove file if it exists
+def remove_file_if_exists(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        print(f"Removed: {file_path}")
+    else:
+        print(f"File not found: {file_path}")
+        
 def run():
 
     ### download instagram reels from url
