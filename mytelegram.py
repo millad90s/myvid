@@ -455,7 +455,7 @@ def main():
         format=log_format,
         level=getattr(logging, log_level, logging.INFO)  # Convert string level to logging constant
     )
-    application = Application.builder().token('7304092080:AAE8PY2jfdujdIlV7J3a2CBfJMcgHC_XKUA').post_init(on_startup).build()
+    application = Application.builder().token(os.getenv('TELEGRAM_API_KEY')).post_init(on_startup).build()
     logging.debug("Starting bot...")
 
     application.add_handler(CommandHandler("start", start_handler))
