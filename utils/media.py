@@ -121,7 +121,7 @@ def convert_srt_to_ass(srt_file, ass_file="styled_farsi_subtitles.ass", subtitle
     
     # Set font size with explicit default handling
     # subs.styles["Default"].fontsize = 14  # Increase size for readability
-    subs.styles["Default"].fontsize = subtitle_setting["fontsize"] if "fontsize" in subtitle_setting else 12  # Default: 16
+    subs.styles["Default"].fontsize = subtitle_setting["fontsize"] if "fontsize" in subtitle_setting else 14  # Default: 16
     
     
     subs.styles["Default"].outline = 4  # No outline
