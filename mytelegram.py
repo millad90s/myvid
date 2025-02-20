@@ -87,7 +87,7 @@ async def get_insta_reels(update: Update, context: CallbackContext):
     url = update.message.text.split(" ")[-1]
 
     ### return if url is not start with instagram reels 
-    if not url.startswith("https://www.instagram.com/reels/"):
+    if not url.startswith("https://www.instagram.com/reel"):
         await context.bot.send_message(chat_id=update.effective_chat.id, text="🙅‍♂️ url is not instagram reels")
         return
     try:

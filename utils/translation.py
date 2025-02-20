@@ -46,7 +46,7 @@ def gemeni_translator(API_KEY: str, input_file: str, output_file: str):
         # Send translation request
         response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=f"مطلبی که در اداکه میزارم رو حفظ فرمت، ترجمه کن به فارسی. یک ترجمه روون و صمیمی.:\n{text}"
+            contents=f"مطلبی که در اداکه میزارم رو حفظ فرمت، ترجمه کن به فارسی. یک ترجمه ساده.:\n{text}"
         )
 
         # Extract translated text (assumes response.result() method exists)

@@ -114,7 +114,7 @@ def convert_srt_to_ass(srt_file, ass_file="styled_farsi_subtitles.ass", subtitle
     print("subtitle_setting is:  ")
     logging.info(subtitle_setting)
     # Modify default subtitle style for Persian
-    subs.styles["Default"].fontname = "B Nazanin"
+    subs.styles["Default"].fontname = "B Titr"
     subs.styles["Default"].primarycolor = pysubs2.Color(0,0,0)  # White text
     subs.styles["Default"].backcolor = pysubs2.Color(255,255,255)  # black color
     subs.styles["Default"].outlinecolor = pysubs2.Color(255,255,255)  # black color
