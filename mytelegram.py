@@ -56,7 +56,26 @@ os.makedirs(DOWNLOADS_DIR, exist_ok=True)  # Ensure the directory exists
 subtitle_path = ""
 video_path = ""
 user_subtitle_settings = {}
+working_hours = os.getenv('WORKING_HOURS').split(" ")
 
+def is_within_working_hours():
+    # Get working hours from .env
+    working_hours = os.getenv("WORKING_HOURS", "08:00 21:00")
+    start_time, end_time = working_hours.split(" ")
+    
+    # Convert to datetime objects
+    now = datetime.now().time()
+    start_time = datetime.strptime(start_time, "%H:%M").time()
+    end_time = datetime.strptime(end_time, "%H:%M").time()
+
+    # Check if current time is within working hours
+    return start_time <= now <= end_time
+
+### check if user's request is in working hours
+def check_working_hours():
+    now = datetime.now()
+    current_time = now.strftime("%H:%M")
+    return current_time in working_hours
 
 def generate_filename(prefix="file", extension="txt"):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -78,7 +97,10 @@ async def start_handler(update: Update, context: CallbackContext):
 
 
 async def get_insta_reels(update: Update, context: CallbackContext):
-    
+    if not is_within_working_hours():
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="❌ Vidio Editor is not available outside working hours.")
+        return
+        
     ### check user id , if it is admin then send reels
     admins = os.getenv('ADMIN_ID').split(",")
     logging.debug(f'admins are {admins}')
@@ -269,6 +291,10 @@ async def bind_subtitle_to_video(update: Update, context: CallbackContext):
             context.user_data.pop('subtitle_path', None)
             
 async def add_sub_command(update: Update, context: CallbackContext):
+    if not is_within_working_hours():
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="❌ Subtitles are not available outside working hours.")
+        return
+        
     """Handles the /addsub command and asks the user for a video and subtitle."""
     context.user_data['waiting_for_video'] = True
     context.user_data['waiting_for_srt'] = True
