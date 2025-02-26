@@ -56,7 +56,6 @@ os.makedirs(DOWNLOADS_DIR, exist_ok=True)  # Ensure the directory exists
 subtitle_path = ""
 video_path = ""
 user_subtitle_settings = {}
-working_hours = os.getenv('WORKING_HOURS').split(" ")
 
 def is_within_working_hours():
     # Get working hours from .env
