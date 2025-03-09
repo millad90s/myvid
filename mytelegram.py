@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from collections import deque
 from google import genai
 from utils import media
+from utils.database import DatabaseManager
 import threading
 import time 
 import random
@@ -31,6 +32,7 @@ from functools import wraps
 #                                     admin_list_users,
 #                                     german_words
 #                                 )
+
 
 # Lock to prevent multiple downloads
 download_lock = threading.Lock()
@@ -97,6 +99,8 @@ async def start_handler(update: Update, context: CallbackContext):
 
 async def get_insta_reels(update: Update, context: CallbackContext):
     if not is_within_working_hours():
+        ### add user's request into database
+        db.log_request(update.effective_chat.id, update.message.text)
         await context.bot.send_message(chat_id=update.effective_chat.id, text="❌ Vidio Editor is not available outside working hours.")
         return
         
@@ -506,4 +510,6 @@ def main():
     application.run_polling(allowed_updates=Update.ALL_TYPES)
     
 if __name__ == "__main__":
+    ### Initialize database
+    db = DatabaseManager()
     main()
