@@ -58,6 +58,8 @@ os.makedirs(DOWNLOADS_DIR, exist_ok=True)  # Ensure the directory exists
 subtitle_path = ""
 video_path = ""
 user_subtitle_settings = {}
+ ### Initialize database
+db = DatabaseManager()
 
 def is_within_working_hours():
     # Get working hours from .env
@@ -99,11 +101,9 @@ async def start_handler(update: Update, context: CallbackContext):
 
 async def get_insta_reels(update: Update, context: CallbackContext):
     if not is_within_working_hours():
-        ### add user's request into database
-        db.log_request(update.effective_chat.id, update.message.text)
         await context.bot.send_message(chat_id=update.effective_chat.id, text="❌ Vidio Editor is not available outside working hours.")
         return
-        
+    
     ### check user id , if it is admin then send reels
     admins = os.getenv('ADMIN_ID').split(",")
     logging.debug(f'admins are {admins}')
@@ -111,6 +111,12 @@ async def get_insta_reels(update: Update, context: CallbackContext):
 
     url = update.message.text.split(" ")[-1]
 
+    ### add user's request into database
+    db.log_command(
+        user_id=update.effective_user.id,
+        command="reels",
+        user_name=update.effective_user.username  # Optional
+    )
     ### return if url is not start with instagram reels 
     if not url.startswith("https://www.instagram.com/reel"):
         await context.bot.send_message(chat_id=update.effective_chat.id, text="🙅‍♂️ url is not instagram reels")
@@ -297,7 +303,14 @@ async def add_sub_command(update: Update, context: CallbackContext):
     if not is_within_working_hours():
         await context.bot.send_message(chat_id=update.effective_chat.id, text="❌ Subtitles are not available outside working hours.")
         return
-        
+    
+    ### add user's request into database
+    db.log_command(
+        user_id=update.effective_user.id,
+        command="addsub",
+        user_name=update.effective_user.username  # Optional
+    )
+    
     """Handles the /addsub command and asks the user for a video and subtitle."""
     context.user_data['waiting_for_video'] = True
     context.user_data['waiting_for_srt'] = True
@@ -322,6 +335,12 @@ async def send_subtitle_position_poll(update: Update, context: CallbackContext):
     question = "Where do you want the subtitles to appear?"
     options = ["1/7(30)", "2/7(55)", "3/7(85)", "4/7(120)", "5/7(155)", "6/7(190)", "7/7(230)"]
 
+    ### add user's request into database
+    db.log_command(
+        user_id=update.effective_user.id,
+        command="setposition",
+        user_name=update.effective_user.username  # Optional
+    )
     # Send the poll
     message = await context.bot.send_poll(
         chat_id=update.effective_chat.id,
@@ -464,6 +483,74 @@ async def background_task(app: Application):
             queue_size = len(queue)
             print(f"Queue size: {queue_size}")
             
+
+async def show_report(update: Update, context: CallbackContext):
+    """Return user command statistics and history"""
+    user_id = update.effective_user.id
+    try:
+        # Check if user is admin
+        admins = os.getenv('ADMIN_ID', '').split(',')
+        is_admin = str(user_id) in admins
+
+        # Parse command arguments
+        args = context.args[0] if context.args else "user"
+        
+        if is_admin:
+            if args == "time":
+                # Show time-based statistics
+                report = db.format_time_report()
+            elif args == "all":
+                # Show all users history (default 7 days)
+                days = 7
+                if len(context.args) > 1 and context.args[1].isdigit():
+                    days = int(context.args[1])
+                report = db.get_all_users_history(days=days)
+            elif args == "global":
+                # Show global usage statistics
+                report = db.format_global_report()
+            else:
+                # Show individual user report
+                report = db.format_user_report(user_id)
+        else:
+            # Non-admin users can only see their own stats
+            report = db.format_user_report(user_id)
+        
+        # Split long reports into multiple messages if needed
+        if len(report) > 4000:
+            for i in range(0, len(report), 4000):
+                chunk = report[i:i + 4000]
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=chunk
+                )
+        else:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=report
+            )
+            
+        if is_admin:
+            # Show available report options to admins
+            help_text = """
+Available report types:
+/show_report - Show your usage
+/show_report time - Show time-based statistics
+/show_report all [days] - Show all users history (optional: specify number of days)
+/show_report global - Show global usage statistics
+"""
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=help_text
+            )
+            
+    except Exception as e:
+        error_msg = f"Error generating report: {str(e)}"
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=error_msg
+        )
+        logging.error(error_msg)
+            
 async def on_startup(app: Application):
     """این تابع هنگام اجرای بات اجرا می‌شود."""
     asyncio.create_task(background_task(app))  # اجرای تسک پس‌زمینه
@@ -497,10 +584,13 @@ def main():
     application.add_handler(CommandHandler("setposition", send_subtitle_position_poll))
     application.add_handler(CommandHandler("showposition", show_subtitle_position))
     application.add_handler(CommandHandler("show_q", show_queue))
+    application.add_handler(CommandHandler("show_report", show_report))
     application.add_handler(MessageHandler(
         (filters.ChatType.GROUPS | filters.ChatType.PRIVATE) & (filters.VIDEO | filters.Document.VIDEO),
         receive_video
     ))
+
+    
     application.add_handler(MessageHandler(filters.Document.ALL, receive_srt))
 
     application.add_handler(PollAnswerHandler(handle_poll_answer))
@@ -510,6 +600,4 @@ def main():
     application.run_polling(allowed_updates=Update.ALL_TYPES)
     
 if __name__ == "__main__":
-    ### Initialize database
-    db = DatabaseManager()
     main()

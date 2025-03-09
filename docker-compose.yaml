@@ -17,14 +17,19 @@ services:
         target: /app/share-folder
         bind:
           propagation: shared
+      - type: bind
+        source: ./data
+        target: /app/data
+        bind:
+          propagation: shared
     restart: always 
     deploy:
       resources:
         limits:
-          cpus: "3"   # Limit to 1 CPU core
+          cpus: "2"   # Limit to 1 CPU core
           memory: "2G"  # Limit memory to 512MB
         reservations:
-          cpus: "2"   # Reserve at least 0.5 CPU core
+          cpus: "1"   # Reserve at least 0.5 CPU core
           memory: "1G"  # Reserve at least 256MB memory
 
   # ollama:
