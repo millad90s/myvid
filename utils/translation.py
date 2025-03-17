@@ -41,14 +41,22 @@ def gemeni_translator(API_KEY: str, input_file: str, output_file: str):
             text = file.read()
 
 
-        print(text)
-        
         # Send translation request
         response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=f" مطلبی که در ادامه میزارم رو خیلی ساده با حفظ فرمت و بدون نقطه گذاریsrt ترجمه کن)(بدون توضیحات) وutf8 ترجمه کن به فارسی ترجمه کن\n{text}"
-        )
+            contents=f"""You are a professional subtitle translator. Your task is to translate an English SRT subtitle file into fluent and natural Persian while maintaining proper context and readability.  
 
+                **Translation Guidelines:**  
+                - Translate naturally and fluently, avoiding word-for-word translation.  
+                - Maintain the tone and meaning of the original text.  
+                - Keep the timecodes unchanged and ensure proper formatting.  
+                - Ensure Persian characters are correctly encoded (UTF-8).  
+                - Use Persian punctuation and grammar properly for readability.  
+
+                Now, translate the following SRT file:
+                {text}
+                """
+        )
         # Extract translated text (assumes response.result() method exists)
         translated_text = response.result() if hasattr(response, 'result') else str(response)
 
