@@ -558,18 +558,81 @@ async def show_queue(update: Update, context: CallbackContext):
     queue_size = len(queue)
     await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Queue size: {queue_size}")
     
+async def broadcast(update: Update, context: CallbackContext):
+    """Send a broadcast message to all users (admin only)"""
+    user_id = update.effective_user.id
+    
+    # Check if user is admin
+    admins = os.getenv('ADMIN_ID', '').split(',')
+    if str(user_id) not in admins:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="❌ This command is only available to administrators."
+        )
+        return
+
+    # Check if there's a message to broadcast
+    if not context.args:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Please provide a message to broadcast.\nUsage: /broadcast <message>"
+        )
+        return
+
+    broadcast_message = ' '.join(context.args)
+    users = db.get_all_users()
+    success_count = 0
+    fail_count = 0
+
+    # Send status message
+    status_message = await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="🚀 Broadcasting message..."
+    )
+
+    # Send to each user
+    for user_id, username in users:
+        try:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=f"📢 Broadcast Message:\n\n{broadcast_message}"
+            )
+            success_count += 1
+            if success_count % 5 == 0:  # Update status every 5 successful sends
+                await status_message.edit_text(
+                    f"🚀 Broadcasting...\nSent: {success_count}\nFailed: {fail_count}"
+                )
+        except Exception as e:
+            fail_count += 1
+            logging.error(f"Failed to send broadcast to user {user_id}: {str(e)}")
+
+    # Final status update
+    await status_message.edit_text(
+        f"✅ Broadcast completed!\n"
+        f"Successfully sent: {success_count}\n"
+        f"Failed: {fail_count}\n"
+        f"Total users: {len(users)}"
+    )
+
+    # Log the broadcast command
+    db.log_command(
+        user_id=update.effective_user.id,
+        command=f"broadcast",
+        user_name=update.effective_user.username
+    )
+
 def main():
     
     load_dotenv()
     # Read logging settings from environment variables
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()  # Default to INFO
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     log_format = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     
     # Set up logger
     logging.basicConfig(
         format=log_format,
-        level=getattr(logging, log_level, logging.INFO)  # Convert string level to logging constant
+        level=getattr(logging, log_level, logging.INFO)
     )
     application = Application.builder().token(os.getenv('TELEGRAM_API_KEY')).post_init(on_startup).build()
     logging.debug("Starting bot...")
@@ -585,6 +648,7 @@ def main():
     application.add_handler(CommandHandler("showposition", show_subtitle_position))
     application.add_handler(CommandHandler("show_q", show_queue))
     application.add_handler(CommandHandler("show_report", show_report))
+    application.add_handler(CommandHandler("broadcast", broadcast))
     application.add_handler(MessageHandler(
         (filters.ChatType.GROUPS | filters.ChatType.PRIVATE) & (filters.VIDEO | filters.Document.VIDEO),
         receive_video

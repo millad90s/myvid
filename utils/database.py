@@ -334,4 +334,17 @@ class DatabaseManager:
             
             return report
         finally:
+            self.disconnect()
+
+    def get_all_users(self) -> List[Tuple[int, Optional[str]]]:
+        """Get all unique users from the database"""
+        self.connect()
+        try:
+            self.cursor.execute('''
+                SELECT DISTINCT user_id, user_name
+                FROM user_commands
+                ORDER BY user_id
+            ''')
+            return self.cursor.fetchall()
+        finally:
             self.disconnect() 
