@@ -44,18 +44,32 @@ def gemeni_translator(API_KEY: str, input_file: str, output_file: str):
         # Send translation request
         response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=f"""You are a professional subtitle translator. Your task is to translate an English SRT subtitle file into fluent and natural Persian while maintaining proper context and readability.  
+            contents=f"""You are an expert subtitle translator specializing in English to Persian translations. Your task is to translate this SRT file into natural, colloquial Persian that sounds native while preserving the original meaning.
 
-                **Translation Guidelines:**  
-                - Translate naturally and fluently, avoiding word-for-word translation.  
-                - Maintain the tone and meaning of the original text.  
-                - Keep the timecodes unchanged and ensure proper formatting.  
-                - Ensure Persian characters are correctly encoded (UTF-8).  
-                - Use Persian punctuation and grammar properly for readability.  
-
-                Now, translate the following SRT file:
-                {text}
-                """
+    **Critical Requirements:**
+    1. MAINTAIN SRT FORMAT EXACTLY:
+       - Keep all numbers and timecodes unchanged
+       - Preserve line breaks and spacing
+       - Don't add or remove subtitle blocks
+    
+    **Translation Guidelines:**
+    - Use everyday Persian expressions and idioms when appropriate
+    - Adapt cultural references to Persian equivalents when possible
+    - Keep sentences concise to fit subtitle length constraints
+    - Use محاوره‌ای style for casual conversations
+    - Use رسمی style for formal/technical content
+    - Ensure proper Persian punctuation (،؛؟)
+    - Maintain any special formatting (italics, bold) from source
+    
+    **DO NOT:**
+    - Don't translate names unless they have common Persian equivalents
+    - Don't add explanatory notes or comments
+    - Don't change timecodes or numbering
+    - Don't make literal word-by-word translations
+    
+    Translate this SRT file:
+    {text}
+    """
         )
         # Extract translated text (assumes response.result() method exists)
         translated_text = response.result() if hasattr(response, 'result') else str(response)
