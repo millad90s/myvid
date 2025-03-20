@@ -26,11 +26,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "3"   # Limit to 3 CPU core
-          memory: "3G"  # Limit memory to 3GB
+          cpus: "4"   # Increased from 2 to 4 CPUs
+          memory: "4G"  # Increased from 2G to 4G
         reservations:
-          cpus: "1"   # Reserve at least 0.5 CPU core
-          memory: "1G"  # Reserve at least 256MB memory
+          cpus: "2"   # Increased from 1 to 2 CPUs
+          memory: "2G"  # Increased from 1G to 2G
 
   # ollama:
   #   image: ollama/ollama:latest
@@ -41,11 +41,11 @@ services:
   #   deploy:
   #     resources:
   #       limits:
-  #         cpus: "6"   # Limit to 1 CPU core
-  #         memory: "10G"  # Limit memory to 512MB
+  #         cpus: "6"   
+  #         memory: "10G"  
   #       reservations:
-  #         cpus: "4"   # Reserve at least 0.5 CPU core
-  #         memory: "6G"  # Reserve at least 256MB memory
+  #         cpus: "4"   
+  #         memory: "6G"  
 
 # volumes:
 #   ollama_data:
