@@ -61,18 +61,27 @@ user_subtitle_settings = {}
  ### Initialize database
 db = DatabaseManager()
 
-def is_within_working_hours():
+def is_within_working_hours() -> tuple[bool, str]:
+    """Check if current time is within working hours and return status with time info"""
     # Get working hours from .env
     working_hours = os.getenv("WORKING_HOURS", "08:00 21:00")
     start_time, end_time = working_hours.split(" ")
     
     # Convert to datetime objects
-    now = datetime.now().time()
+    now = datetime.now()
+    current_time = now.time()
     start_time = datetime.strptime(start_time, "%H:%M").time()
     end_time = datetime.strptime(end_time, "%H:%M").time()
 
+    # Format time info
+    time_info = (
+        f"🕒 Server Time: {now.strftime('%Y-%m-%d %H:%M')}\n"
+        f"⏰ Working Hours: {start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
+    )
+
     # Check if current time is within working hours
-    return start_time <= now <= end_time
+    is_working = start_time <= current_time <= end_time
+    return is_working, time_info
 
 ### check if user's request is in working hours
 def check_working_hours():
@@ -100,7 +109,7 @@ async def start_handler(update: Update, context: CallbackContext):
 
 
 async def get_insta_reels(update: Update, context: CallbackContext):
-    if not is_within_working_hours():
+    if not is_within_working_hours()[0]:
         await context.bot.send_message(chat_id=update.effective_chat.id, text="❌ Vidio Editor is not available outside working hours.")
         return
     
@@ -300,7 +309,7 @@ async def bind_subtitle_to_video(update: Update, context: CallbackContext):
             context.user_data.pop('subtitle_path', None)
             
 async def add_sub_command(update: Update, context: CallbackContext):
-    if not is_within_working_hours():
+    if not is_within_working_hours()[0]:
         await context.bot.send_message(chat_id=update.effective_chat.id, text="❌ Subtitles are not available outside working hours.")
         return
     
@@ -571,44 +580,96 @@ async def broadcast(update: Update, context: CallbackContext):
         )
         return
 
-    # Check if there's a message to broadcast
-    if not context.args:
+    # Check working hours
+    is_working, time_info = is_within_working_hours()
+    if not is_working:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="Please provide a message to broadcast.\nUsage: /broadcast <message>"
+            text=f"❌ Broadcasting is not available outside working hours.\n\n{time_info}"
         )
         return
 
-    broadcast_message = ' '.join(context.args)
+    # Check if there's a message to broadcast
+    if not context.args:
+        help_text = f"""
+📢 Broadcast Usage:
+{time_info}
+
+1. Simple Text:
+   /broadcast Your message here
+   
+2. With Markdown:
+   /broadcast -m *bold* _italic_ `code` text
+   
+3. Forward a message:
+   Reply to any message with: /broadcast -f
+
+Example:
+/broadcast -m *Important Update*
+Dear users,
+The bot will be under maintenance from _10:00_ to `12:00` UTC.
+"""
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=help_text,
+            parse_mode='Markdown'
+        )
+        return
+
+    # Check if it's a forward request
+    if context.args[0] == '-f' and update.message.reply_to_message:
+        message_to_forward = update.message.reply_to_message
+        broadcast_type = 'forward'
+    else:
+        # Check if it's a markdown message
+        if context.args[0] == '-m':
+            broadcast_message = ' '.join(context.args[1:])
+            parse_mode = 'Markdown'
+        else:
+            broadcast_message = ' '.join(context.args)
+            parse_mode = None
+        broadcast_type = 'message'
+
     users = db.get_all_users()
     success_count = 0
     fail_count = 0
 
-    # Send status message
+    # Send status message with time info
     status_message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="🚀 Broadcasting message..."
+        text=f"🚀 Broadcasting message...\n{time_info}"
     )
 
     # Send to each user
     for user_id, username in users:
         try:
-            await context.bot.send_message(
-                chat_id=user_id,
-                text=f"📢 Broadcast Message:\n\n{broadcast_message}"
-            )
+            if broadcast_type == 'forward':
+                await message_to_forward.forward(user_id)
+            else:
+                # Add timestamp to broadcast message
+                current_time = datetime.now().strftime('%Y-%m-%d %H:%M')
+                timestamped_message = f"📢 Broadcast Message ({current_time}):\n\n{broadcast_message}"
+                await context.bot.send_message(
+                    chat_id=user_id,
+                    text=timestamped_message,
+                    parse_mode=parse_mode
+                )
             success_count += 1
             if success_count % 5 == 0:  # Update status every 5 successful sends
                 await status_message.edit_text(
-                    f"🚀 Broadcasting...\nSent: {success_count}\nFailed: {fail_count}"
+                    f"🚀 Broadcasting...\n{time_info}\n"
+                    f"Sent: {success_count}\nFailed: {fail_count}"
                 )
+            # Add small delay to avoid hitting rate limits
+            await asyncio.sleep(0.1)
         except Exception as e:
             fail_count += 1
             logging.error(f"Failed to send broadcast to user {user_id}: {str(e)}")
 
-    # Final status update
+    # Final status update with current time
+    _, updated_time_info = is_within_working_hours()  # Get fresh time info
     await status_message.edit_text(
-        f"✅ Broadcast completed!\n"
+        f"✅ Broadcast completed!\n{updated_time_info}\n"
         f"Successfully sent: {success_count}\n"
         f"Failed: {fail_count}\n"
         f"Total users: {len(users)}"
