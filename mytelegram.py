@@ -257,6 +257,10 @@ async def set_subtitle(update: Update, context: CallbackContext):
                                     text="Please enter FontSize ?")
 
 async def set_font_size(update: Update, context: CallbackContext):
+    # Ensure subtitle_setting dictionary exists
+    if "subtitle_setting" not in context.user_data:
+        context.user_data["subtitle_setting"] = {}  # Initialize empty dictionary
+    
     font_size = update.message.text
     context.user_data["subtitle_setting"]["fontsize"] = font_size
     await context.bot.send_message(chat_id=update.effective_chat.id, 
