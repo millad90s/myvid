@@ -65,23 +65,45 @@ def is_within_working_hours() -> tuple[bool, str]:
     """Check if current time is within working hours and return status with time info"""
     # Get working hours from .env
     working_hours = os.getenv("WORKING_HOURS", "08:00 21:00")
-    start_time, end_time = working_hours.split(" ")
-    
-    # Convert to datetime objects
-    now = datetime.now()
-    current_time = now.time()
-    start_time = datetime.strptime(start_time, "%H:%M").time()
-    end_time = datetime.strptime(end_time, "%H:%M").time()
+    try:
+        start_time, end_time = working_hours.split(" ")
+        
+        # Handle edge case where end_time is 24:00
+        if end_time == "24:00":
+            end_time = "23:59"
+        
+        # Convert to datetime objects
+        now = datetime.now()
+        current_time = now.time()
+        
+        try:
+            start_time = datetime.strptime(start_time, "%H:%M").time()
+            end_time = datetime.strptime(end_time, "%H:%M").time()
+        except ValueError as e:
+            logging.error(f"Invalid time format in WORKING_HOURS: {e}")
+            # Default to 8 AM - 9 PM if there's an error
+            start_time = datetime.strptime("08:00", "%H:%M").time()
+            end_time = datetime.strptime("21:00", "%H:%M").time()
 
-    # Format time info
-    time_info = (
-        f"🕒 Server Time: {now.strftime('%Y-%m-%d %H:%M')}\n"
-        f"⏰ Working Hours: {start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
-    )
+        # Format time info
+        time_info = (
+            f"🕒 Server Time: {now.strftime('%Y-%m-%d %H:%M')}\n"
+            f"⏰ Working Hours: {start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
+        )
 
-    # Check if current time is within working hours
-    is_working = start_time <= current_time <= end_time
-    return is_working, time_info
+        # Check if current time is within working hours
+        is_working = start_time <= current_time <= end_time
+        return is_working, time_info
+        
+    except Exception as e:
+        logging.error(f"Error in working hours check: {e}")
+        # Return a safe default if there's any error
+        now = datetime.now()
+        time_info = (
+            f"🕒 Server Time: {now.strftime('%Y-%m-%d %H:%M')}\n"
+            f"⏰ Working Hours: 08:00 - 21:00 (default)"
+        )
+        return False, time_info
 
 ### check if user's request is in working hours
 def check_working_hours():
@@ -233,6 +255,12 @@ async def set_subtitle(update: Update, context: CallbackContext):
     
     await context.bot.send_message(chat_id=update.effective_chat.id, 
                                     text="Please enter FontSize ?")
+
+async def set_font_size(update: Update, context: CallbackContext):
+    font_size = update.message.text
+    context.user_data["subtitle_setting"]["fontsize"] = font_size
+    await context.bot.send_message(chat_id=update.effective_chat.id, 
+                                    text=f"✅ FontSize set to {font_size}")
 
 async def receive_srt(update: Update, context: CallbackContext):
     """Handle the received SRT subtitle file."""
@@ -707,6 +735,7 @@ def main():
     application.add_handler(CommandHandler("add_q", add_queue))
     application.add_handler(CommandHandler("setposition", send_subtitle_position_poll))
     application.add_handler(CommandHandler("showposition", show_subtitle_position))
+    application.add_handler(CommandHandler("setfontsize", set_font_size))
     application.add_handler(CommandHandler("show_q", show_queue))
     application.add_handler(CommandHandler("show_report", show_report))
     application.add_handler(CommandHandler("broadcast", broadcast))
