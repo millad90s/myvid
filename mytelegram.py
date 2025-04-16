@@ -492,26 +492,26 @@ async def background_task(app: Application):
                 
                 ### lets test gemeni :) 
                 API_KEY = os.getenv('GEM_API_KEY')
-                translation.gemeni_translator(API_KEY, origin_srt_path, gemeni_srt_path)
-                document3 = open(gemeni_srt_path)
+                # translation.gemeni_translator(API_KEY, origin_srt_path, gemeni_srt_path)
+                # document3 = open(gemeni_srt_path)
                 # Read the contents
                 # content = document3.read()
-                await app.bot.send_document(chat_id=chat_id, document=document3 )
+                # await app.bot.send_document(chat_id=chat_id, document=document3 )
                 # document3.close()
                 
                 # copy strt to txt file 
-                shutil.copyfile(gemeni_srt_path, gemeni_txt_path)
+                # shutil.copyfile(gemeni_srt_path, gemeni_txt_path)
                 # with open(txt_path, "w", encoding="utf-8") as txt_file:
                 #     txt_file.write(content.decode("utf-8"))
-                await app.bot.send_document(chat_id=chat_id, document=gemeni_txt_path )
+                # await app.bot.send_document(chat_id=chat_id, document=gemeni_txt_path )
                 # translation.translate_srt(origin_srt_path, ollama_srt_path)
             
                 ### delete video from system 
                 media.remove_file_if_exists(video_path)
                 media.remove_file_if_exists(origin_srt_path)
-                media.remove_file_if_exists(ollama_srt_path)
-                media.remove_file_if_exists(gemeni_srt_path)
-                media.remove_file_if_exists(gemeni_txt_path)
+                # media.remove_file_if_exists(ollama_srt_path)
+                # media.remove_file_if_exists(gemeni_srt_path)
+                # media.remove_file_if_exists(gemeni_txt_path)
         except Exception as e:
             await app.bot.send_message(chat_id=chat_id, text=f"❌ Error processing video: {str(e)}")
             media.remove_file_if_exists(video_path)
